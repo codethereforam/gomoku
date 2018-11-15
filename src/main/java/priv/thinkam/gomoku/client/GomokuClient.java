@@ -222,8 +222,12 @@ public class GomokuClient {
 				int x = Integer.parseInt(strs[1]);
 				int y = Integer.parseInt(strs[2]);
 				if (rivalId == gomokuClientFrame.getRivalId()) {
-					Chessman chessman = new Chessman(x, y,
-							rivalId % 2 == 1);
+
+					boolean white = rivalId % 2 == 1;
+					gomokuClientFrame.getOutline().set(x, y, white);
+					gomokuClientFrame.getOutline().setDrawable(true);
+
+					Chessman chessman = new Chessman(x, y, white);
 					gomokuClientFrame.addChessman(chessman);
 					gomokuClientFrame.repaint();
 					if (gomokuClientFrame.isDraw()) {

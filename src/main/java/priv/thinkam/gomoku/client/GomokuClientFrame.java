@@ -1,6 +1,7 @@
 package priv.thinkam.gomoku.client;
 
 import priv.thinkam.gomoku.client.model.Chessman;
+import priv.thinkam.gomoku.client.model.Outline;
 
 import javax.swing.*;
 import java.awt.*;
@@ -53,6 +54,7 @@ public class GomokuClientFrame extends Frame {
 	private boolean addible;
 	private GomokuClient gomokuClient;
 	private boolean over;
+	private Outline outline = Outline.getInstance();
 
 	GomokuClientFrame(GomokuClient gomokuClient) {
 		this.gomokuClient = gomokuClient;
@@ -235,6 +237,10 @@ public class GomokuClientFrame extends Frame {
 	@Override
 	public void paint(Graphics g) {
 		drawGrid(g);
+		if(outline.isDrawable()) {
+			outline.draw(g);
+			outline.setDrawable(false);
+		}
 		chessmanSet.forEach((c) -> c.draw(g));
 	}
 
@@ -407,5 +413,9 @@ public class GomokuClientFrame extends Frame {
 		textArea.setForeground(Color.red);
 		textArea.setFont(new Font("Verdana", Font.BOLD, 24));
 		textArea.setText("Server crashes......");
+	}
+
+	Outline getOutline() {
+		return outline;
 	}
 }
