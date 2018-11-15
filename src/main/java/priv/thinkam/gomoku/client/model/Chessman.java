@@ -5,6 +5,8 @@ import priv.thinkam.gomoku.common.Drawable;
 import java.awt.*;
 
 /**
+ * 棋子
+ *
  * @author thinkam
  * @date 2018/11/14
  */

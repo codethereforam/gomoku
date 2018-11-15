@@ -1,6 +1,7 @@
 package priv.thinkam.gomoku.server;
 
 import priv.thinkam.gomoku.common.Constant;
+import priv.thinkam.gomoku.net.FixLengthWrapper;
 import priv.thinkam.gomoku.util.StringUtils;
 
 import java.io.IOException;
@@ -148,31 +149,41 @@ public class GomokuServer {
 	}
 
 	private void handleReadableKey(SelectionKey selectionKey) {
-		// Read the data
 		SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
-		ByteBuffer readBuffer = ByteBuffer.allocate(1024);
-		int readBytes;
+		ByteBuffer byteBuffer = ByteBuffer.allocate(10240);
+		int byteCount;
 		try {
-			readBytes = socketChannel.read(readBuffer);
+			byteCount = socketChannel.read(byteBuffer);
 		} catch (IOException e) {
 			handleClientDisconnect(socketChannel, selectionKey);
 			e.printStackTrace();
 			return;
 		}
-		if (readBytes > 0) {
-			this.handleReceivedMessage(readBuffer, socketChannel);
-		} else if (readBytes < 0) {
+		if(byteCount < 0) {
 			handleClientDisconnect(socketChannel, selectionKey);
 		}
-	}
 
-	private void handleReceivedMessage(ByteBuffer readBuffer, SocketChannel socketChannel) {
-		readBuffer.flip();
-		byte[] bytes = new byte[readBuffer.remaining()];
-		readBuffer.get(bytes);
-		String message = new String(bytes, StandardCharsets.UTF_8);
-		System.out.println(message);
-		sendMessageToAll(message, socketChannel);
+		while (byteCount > 0) {
+			byteBuffer.flip();
+			while (byteBuffer.remaining() >= FixLengthWrapper.MAX_LENGTH) {
+				byte[] data = new byte[FixLengthWrapper.MAX_LENGTH];
+				byteBuffer.get(data, 0, FixLengthWrapper.MAX_LENGTH);
+				String message = new String(data, StandardCharsets.UTF_8).trim();
+				System.out.println(message);
+				sendMessageToAll(message, socketChannel);
+			}
+
+			try {
+				byteCount = socketChannel.read(byteBuffer);
+			} catch (IOException e) {
+				handleClientDisconnect(socketChannel, selectionKey);
+				e.printStackTrace();
+				return;
+			}
+			if(byteCount < 0) {
+				handleClientDisconnect(socketChannel, selectionKey);
+			}
+		}
 	}
 
 	private void handleClientDisconnect(SocketChannel socketChannel, SelectionKey selectionKey) {
@@ -259,12 +270,8 @@ public class GomokuServer {
 	 */
 	private void sendMessage(SocketChannel channel, String response) {
 		if (StringUtils.isNotBlank(response)) {
-			byte[] bytes = response.getBytes();
-			ByteBuffer writeBuffer = ByteBuffer.allocate(bytes.length);
-			writeBuffer.put(bytes);
-			writeBuffer.flip();
 			try {
-				channel.write(writeBuffer);
+				channel.write(ByteBuffer.wrap(new FixLengthWrapper(response).getBytes()));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

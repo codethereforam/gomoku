@@ -21,7 +21,7 @@ public class GomokuClientFrame extends Frame {
 	private static final Color BACKGROUND_COLOR = new Color(210, 105, 30);
 	private static final int GRID_NUMBER = 15;
 	/**
-	 * 每个格子的边长与棋子直径相同
+	 * 格子边长，每个格子的边长与棋子直径相同
 	 */
 	static final int GRID_LENGTH = Chessman.DIAMETER;
 	private static final int LENGTH = (GRID_NUMBER + 1) * GRID_LENGTH;
@@ -96,6 +96,7 @@ public class GomokuClientFrame extends Frame {
 		this.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
+				gomokuClient.close();
 				System.exit(0);
 			}
 		});
@@ -183,10 +184,13 @@ public class GomokuClientFrame extends Frame {
 
 			int cx = x / GRID_LENGTH - 1, cy = y / GRID_LENGTH - 1;
 			mark[cx][cy] = true;
-			if (this.checkWin(cx, cy)) {
-				gomokuClient.sendMessageToServer("7;" + this.id);
+			if (this.isWin(cx, cy)) {
+				String winMessage = "7;" + this.id;
+				gomokuClient.sendMessageToServer(winMessage);
+				System.out.println("send: " + winMessage);
 				textArea.setText("游戏已结束！！！");
 				JOptionPane.showMessageDialog(GomokuClientFrame.this, "恭喜你赢了！！！");
+				this.gameOver();
 				return;
 			}
 
@@ -262,7 +266,7 @@ public class GomokuClientFrame extends Frame {
 	}
 
 
-	private boolean checkWin(int x, int y) {
+	private boolean isWin(int x, int y) {
 		boolean flag = false;
 		if (checkXCount(x, y) >= 5) {
 			System.out.println("win水平线");

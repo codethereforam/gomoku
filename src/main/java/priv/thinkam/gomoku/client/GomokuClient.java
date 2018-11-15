@@ -2,6 +2,7 @@ package priv.thinkam.gomoku.client;
 
 import priv.thinkam.gomoku.client.model.Chessman;
 import priv.thinkam.gomoku.common.Constant;
+import priv.thinkam.gomoku.net.FixLengthWrapper;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -135,28 +136,39 @@ public class GomokuClient {
 
 	private void handleReadableKey(SelectionKey selectionKey) {
 		SocketChannel sc = (SocketChannel) selectionKey.channel();
-		ByteBuffer readBuffer = ByteBuffer.allocate(1024);
-		int readBytes;
+		ByteBuffer byteBuffer = ByteBuffer.allocate(10240);
+		int byteCount;
 		try {
-			readBytes = sc.read(readBuffer);
+			byteCount = sc.read(byteBuffer);
 		} catch (IOException e) {
-			this.handleServerCrashAndClose(selectionKey);
 			e.printStackTrace();
+			this.handleServerCrashAndClose(selectionKey);
 			return;
 		}
-		if (readBytes > 0) {
-			this.handleReceivedMessage(readBuffer);
-		} else if (readBytes < 0) {
+		if(byteCount < 0) {
 			this.handleServerCrashAndClose(selectionKey);
 		}
-	}
 
-	private void handleReceivedMessage(ByteBuffer readBuffer) {
-		readBuffer.flip();
-		byte[] bytes = new byte[readBuffer.remaining()];
-		readBuffer.get(bytes);
-		String message = new String(bytes, StandardCharsets.UTF_8);
-		this.process(message);
+		while (byteCount > 0) {
+			byteBuffer.flip();
+			while (byteBuffer.remaining() >= FixLengthWrapper.MAX_LENGTH) {
+				byte[] data = new byte[FixLengthWrapper.MAX_LENGTH];
+				byteBuffer.get(data, 0, FixLengthWrapper.MAX_LENGTH);
+				String message = new String(data, StandardCharsets.UTF_8);
+				this.process(message.trim());
+			}
+
+			try {
+				byteCount = sc.read(byteBuffer);
+			} catch (IOException e) {
+				e.printStackTrace();
+				this.handleServerCrashAndClose(selectionKey);
+				return;
+			}
+			if(byteCount < 0) {
+				this.handleServerCrashAndClose(selectionKey);
+			}
+		}
 	}
 
 	private void process(String message) {
@@ -283,11 +295,7 @@ public class GomokuClient {
 	 */
 	void sendMessageToServer(String text) {
 		try {
-			byte[] req = text.getBytes();
-			ByteBuffer writeBuffer = ByteBuffer.allocate(req.length);
-			writeBuffer.put(req);
-			writeBuffer.flip();
-			socketChannel.write(writeBuffer);
+			socketChannel.write(ByteBuffer.wrap(new FixLengthWrapper(text).getBytes()));
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(-1);
